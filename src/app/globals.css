@@ -1,26 +1,77 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-brand-red: #e11d2a;
+  --color-brand-red-dark: #b3141f;
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #171717;
+  --color-paper: #ffffff;
+  --color-mist: #f4f4f5;
+  --color-line: #e4e4e7;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-red: var(--color-brand-red);
+  --color-brand-red-dark: var(--color-brand-red-dark);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-paper: var(--color-paper);
+  --color-mist: var(--color-mist);
+  --color-line: var(--color-line);
+  --font-sans: var(--font-inter);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.container-page {
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .container-page {
+    padding-inline: 2rem;
+  }
+}
+
+/* Bulle d'accroche de l'assistant IA : réapparaît toutes les 15
+   secondes tant que le chat n'est pas ouvert, en CSS pur (aucun
+   minuteur JS, aucun risque de dérive de timing). */
+@keyframes assistant-hint {
+  0%, 6% { opacity: 0; transform: translateY(4px); }
+  16%, 55% { opacity: 1; transform: translateY(0); }
+  70%, 100% { opacity: 0; transform: translateY(4px); }
+}
+
+.assistant-hint-bubble {
+  animation: assistant-hint 15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-hint-bubble {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Lueur blanche douce et floue derrière le personnage : garde le
+   dessin (traits noirs) visible quand le widget flotte au-dessus
+   d'une section sombre de la page, sans ajouter de cadre ni de boîte
+   visible — quasi invisible sur fond clair. */
+.assistant-figure {
+  position: relative;
+}
+
+.assistant-figure-glow {
+  position: absolute;
+  inset: -12%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  filter: blur(14px);
+  pointer-events: none;
 }

@@ -1,0 +1,358 @@
+// Coach Saad — schema Prisma
+// Environnement: MODE TEST par défaut (voir .env.example)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth / utilisateurs
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+// L'id correspond à auth.users.id (uuid) côté Supabase : ce modèle est le
+// profil applicatif, jamais le stockage des identifiants (Supabase Auth
+// gère les mots de passe). En MODE TEST (sans Supabase), l'id est généré
+// localement par le script de seed pour permettre de tester le reste de
+// l'application.
+model User {
+  id            String    @id
+  email         String    @unique
+  role          Role      @default(CLIENT)
+  firstName     String
+  lastName      String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  isTestAccount Boolean   @default(false)
+
+  bookings          Booking[]
+  nutritionProfile  NutritionProfile?
+  subscriptions     Subscription[]
+  payments          Payment[]
+  consents          ConsentLog[]
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------------------------
+// Contenu / CMS léger (permet de tout modifier depuis l'admin sans coder)
+// ---------------------------------------------------------------------------
+
+model ContentBlock {
+  id        String   @id @default(cuid())
+  key       String   @unique // ex: "hero.title", "contact.phone", "about.stats.experience"
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model ProgramCard {
+  id          String   @id @default(cuid())
+  slug        String   @unique // ex: "prise-de-muscle"
+  title       String
+  description String
+  icon        String   // nom d'icône lucide-react
+  imagePath   String?  // chemin public/images, null = placeholder neutre
+  ctaLabel    String   @default("EN SAVOIR PLUS")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  name        String
+  age         Int?
+  goal        String?
+  quote       String   @db.Text
+  result      String?
+  photoPath   String?  // null = avatar neutre (aucune photo générée)
+  order       Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Tarifs / zone de déplacement / horaires (tout configurable en admin)
+// ---------------------------------------------------------------------------
+
+model PricingConfig {
+  id                 String   @id @default("singleton")
+  price1h            Int      @default(7000)  // centimes
+  price1h30          Int      @default(9500)
+  price2h            Int      @default(12000)
+  nutritionMonthly   Int      @default(1000)  // 10,00 €
+  currency           String   @default("EUR")
+  updatedAt          DateTime @updatedAt
+}
+
+model TravelZoneConfig {
+  id            String   @id @default("singleton")
+  originLabel   String   @default("Lille, France (adresse de test)")
+  originLat     Float    @default(50.6292)
+  originLng     Float    @default(3.0573)
+  radiusKm      Float    @default(50)
+  updatedAt     DateTime @updatedAt
+}
+
+enum Weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model WorkingHours {
+  id        String   @id @default(cuid())
+  weekday   Weekday
+  startTime String   // "09:00"
+  endTime   String   // "18:00"
+  isActive  Boolean  @default(true)
+
+  @@unique([weekday, startTime, endTime])
+}
+
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Réservations / coaching à domicile
+// ---------------------------------------------------------------------------
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum SessionDuration {
+  MIN60
+  MIN90
+  MIN120
+}
+
+model Booking {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+
+  courseType    String          // ex: "Prise de muscle", "Perte de poids"...
+  duration      SessionDuration
+  startAt       DateTime
+  endAt         DateTime
+
+  address       String
+  addressLat    Float
+  addressLng    Float
+  distanceKm    Float
+
+  priceCents    Int
+  status        BookingStatus   @default(PENDING_PAYMENT)
+
+  payment       Payment?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([startAt, endAt])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Nutrition IA
+// ---------------------------------------------------------------------------
+
+enum Sex {
+  HOMME
+  FEMME
+  AUTRE
+}
+
+enum Goal {
+  PERTE_DE_POIDS
+  PRISE_DE_MUSCLE
+  MAINTIEN
+  BIEN_ETRE
+  PERFORMANCE
+}
+
+enum ActivityLevel {
+  SEDENTAIRE
+  LEGER
+  MODERE
+  ELEVE
+  TRES_ELEVE
+}
+
+model NutritionProfile {
+  id                  String        @id @default(cuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id])
+
+  firstName           String
+  age                 Int
+  sex                 Sex
+  heightCm            Int
+  weightKg            Float
+  goal                Goal
+  activityLevel       ActivityLevel
+  sessionsPerWeek     Int
+  sportType           String?
+  mealsPerDay         Int           @default(3)
+  likedFoods          String?       @db.Text
+  dislikedFoods       String?       @db.Text
+  allergies           String?       @db.Text
+  intolerances        String?       @db.Text
+  diet                String?       // ex: "vegetarien", "halal", "sans restriction"
+  budget              String?
+  schedule            String?
+  constraints         String?       @db.Text
+  additionalInfo      String?       @db.Text
+
+  // Verrou mensuel — contrôlé côté serveur, jamais côté client
+  lastEditedAt        DateTime      @default(now())
+  nextEditableAt       DateTime
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  programs            NutritionProgram[]
+}
+
+model NutritionProgram {
+  id                 String           @id @default(cuid())
+  profileId          String
+  profile            NutritionProfile @relation(fields: [profileId], references: [id])
+
+  generatedByAI      Boolean          @default(true)
+  aiDisclaimer       String           @default("Programme généré par une intelligence artificielle à titre informatif. Ne remplace pas l'avis d'un médecin ou d'un diététicien.")
+
+  calorieEstimate    Int
+  macros             Json             // { proteines, glucides, lipides }
+  meals              Json             // repas + quantités + alternatives
+  shoppingList       Json
+  advice             String           @db.Text
+
+  isCurrent          Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+
+  @@index([profileId])
+}
+
+// ---------------------------------------------------------------------------
+// Abonnements / paiements (architecture prête, MODE TEST par défaut)
+// ---------------------------------------------------------------------------
+
+enum SubscriptionType {
+  NUTRITION_IA
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  TEST_MODE
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  userId                String
+  user                  User               @relation(fields: [userId], references: [id])
+  type                  SubscriptionType
+  status                SubscriptionStatus @default(TEST_MODE)
+
+  providerCustomerId    String?            // id fournisseur paiement (rempli en prod)
+  providerSubscriptionId String?
+
+  currentPeriodStart    DateTime           @default(now())
+  currentPeriodEnd      DateTime
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+}
+
+enum PaymentPurpose {
+  BOOKING
+  NUTRITION_SUBSCRIPTION
+}
+
+enum PaymentStatus {
+  TEST_SIMULATED
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id              String         @id @default(cuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id])
+
+  purpose         PaymentPurpose
+  amountCents     Int
+  currency        String         @default("EUR")
+  status          PaymentStatus  @default(TEST_SIMULATED)
+
+  providerRef     String?        // id de transaction fournisseur (rempli en prod)
+
+  bookingId       String?        @unique
+  booking         Booking?       @relation(fields: [bookingId], references: [id])
+
+  createdAt       DateTime       @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Assistant IA (gratuit, page d'accueil) — entièrement configurable
+// ---------------------------------------------------------------------------
+
+model AssistantConfig {
+  id                 String   @id @default("singleton")
+  isActive           Boolean  @default(true)
+  name               String   @default("Assistant Coach Saad")
+  greeting           String   @default("Salut 👋 Je suis l'assistant Coach Saad. Pose-moi une question sur le sport, la nutrition ou le bien-être !")
+  hintText           String   @default("Besoin d'un conseil ? 👋")
+  avatarPath         String?
+  suggestions        Json     @default("[\"Comment perdre du poids ?\", \"Comment commencer la musculation ?\", \"Que manger après le sport ?\", \"Comment améliorer mon cardio ?\"]")
+  systemInstructions String   @db.Text @default("Tu es l'assistant gratuit de Coach Saad. Réponds avec de vrais conseils généraux sur le sport, la nutrition, la perte de poids, la prise de muscle, le cardio, le HIIT, la mobilité, la récupération, le bien-être et la motivation. Ne vends pas constamment. Si la demande est très personnalisée (programme alimentaire complet, calories précises, repas de la semaine, quantités selon le poids), propose poliment l'abonnement Nutrition IA à 10€/mois plutôt que de l'improviser. Tu n'es pas médecin, ne donne jamais de diagnostic médical.")
+  nutritionPitch     String   @default("Pour obtenir un programme personnalisé selon ton profil, tes objectifs et ton mode de vie.")
+  nutritionCta       String   @default("DÉCOUVRIR NUTRITION IA")
+  updatedAt          DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// RGPD
+// ---------------------------------------------------------------------------
+
+enum ConsentType {
+  COOKIES
+  DATA_PROCESSING
+  ACCOUNT_DELETION_REQUEST
+  DATA_EXPORT_REQUEST
+}
+
+model ConsentLog {
+  id        String      @id @default(cuid())
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id])
+  type      ConsentType
+  details   String?
+  createdAt DateTime    @default(now())
+}
