@@ -3,6 +3,41 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getContentMap, content } from "@/lib/services/content";
 
+const HERO_TITLES: string[][] = [
+  ["BOUGE TON CORPS,", "ÉLÈVE TA VIE."],
+  ["TRANSFORME TON CORPS,", "DÉPASSE TES LIMITES."],
+  ["ATTEINS TES OBJECTIFS,", "CHANGE TA VIE."],
+  ["DEVIENS LA MEILLEURE", "VERSION DE TOI."],
+];
+
+function renderHeroTitleLines(lines: string[]) {
+  return lines.map((line, lineIndex) => {
+    const isLastLine = lineIndex === lines.length - 1;
+    if (!isLastLine) {
+      return (
+        <span key={lineIndex}>
+          {line}
+          <br />
+        </span>
+      );
+    }
+    const words = line.split(" ");
+    return (
+      <span key={lineIndex}>
+        {words.map((word, wordIndex) =>
+          wordIndex === words.length - 1 ? (
+            <span key={wordIndex} className="text-brand-red">
+              {word}
+            </span>
+          ) : (
+            <span key={wordIndex}>{word} </span>
+          )
+        )}
+      </span>
+    );
+  });
+}
+
 export async function Hero() {
   const c = await getContentMap();
   const imageLeft = content(c, "hero.imagePathLeft");
@@ -29,18 +64,12 @@ export async function Hero() {
         <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-red">
           {content(c, "hero.kicker", "Coaching personnalisé")}
         </span>
-        <h1 className="text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
-          {content(c, "hero.title", "Bouge ton corps, élève ta vie.")
-            .split(" ")
-            .map((word, i, arr) =>
-              i === arr.length - 1 ? (
-                <span key={i} className="text-brand-red">
-                  {word}
-                </span>
-              ) : (
-                <span key={i}>{word} </span>
-              )
-            )}
+        <h1 className="hero-rotate text-3xl font-extrabold uppercase leading-tight tracking-tight md:text-4xl">
+          {HERO_TITLES.map((lines, i) => (
+            <span key={i} className="hero-rotate-item">
+              {renderHeroTitleLines(lines)}
+            </span>
+          ))}
         </h1>
         <p className="text-sm font-semibold uppercase tracking-widest text-white/70">
           {content(c, "hero.subtitle", "Force. Confiance. Énergie.")}

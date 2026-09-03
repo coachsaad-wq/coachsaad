@@ -10,7 +10,7 @@ import { getPricingConfig, formatPriceCents } from "@/lib/services/pricing";
 export const metadata: Metadata = {
   title: "Nutrition",
   description:
-    "Plans alimentaires personnalisés et Nutrition IA : un programme nutrition généré selon ton profil, tes objectifs et ton mode de vie, à partir de 10€/mois.",
+    "Plans alimentaires personnalisés : un programme nutrition adapté à ton profil, tes objectifs et ton mode de vie, à partir de 10€/mois.",
 };
 
 const INCLUDED = [
@@ -48,15 +48,14 @@ export default async function NutritionPage() {
             <Sparkles className="h-6 w-6" />
           </span>
           <h2 className="mt-4 text-xl font-extrabold uppercase tracking-tight text-ink">
-            Nutrition IA
+            Nutrition personnalisée
           </h2>
           <p className="mt-2 text-3xl font-extrabold text-brand-red">
             {formatPriceCents(pricing.nutritionMonthly, pricing.currency)}
             <span className="text-sm font-medium text-ink-soft"> / mois</span>
           </p>
           <p className="mt-3 text-sm text-ink-soft/70">
-            Pour obtenir un programme personnalisé selon ton profil, tes objectifs et ton
-            mode de vie.
+            Un programme personnalisé selon ton profil, tes objectifs et ton mode de vie.
           </p>
 
           <ul className="mx-auto mt-6 flex max-w-sm flex-col gap-2 text-left text-sm text-ink-soft/80">
@@ -72,13 +71,8 @@ export default async function NutritionPage() {
             href="/nutrition/abonnement"
             className="mt-6 inline-block rounded-md bg-brand-red px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white hover:bg-brand-red-dark"
           >
-            Découvrir Nutrition IA
+            Découvrir le programme
           </Link>
-
-          <p className="mt-4 text-xs text-ink-soft/50">
-            Programme généré par une intelligence artificielle à titre informatif. Ne
-            remplace pas l&apos;avis d&apos;un médecin ou d&apos;un diététicien.
-          </p>
         </div>
       </section>
 
